@@ -37,15 +37,25 @@ struct PostDetailView: View {
         return currentUser.id == resolvedPost.authorID && resolvedPost.postType == .employerHiring
     }
 
-    private var authorEmailURL: URL? {
-        ContactSupport.emailURL(
-            primary: resolvedPost.authorContact,
+    private var authorEmailText: String? {
+        ContactSupport.emailCandidate(
+            primary: author?.marketplaceEmail ?? resolvedPost.authorContact,
             fallback: author?.email
         )
     }
 
+    private var authorPhoneText: String? {
+        ContactSupport.phoneCandidate(
+            primary: author?.preferredPhone ?? resolvedPost.authorContact
+        )
+    }
+
+    private var authorEmailURL: URL? {
+        ContactSupport.emailURL(primary: authorEmailText, fallback: author?.email)
+    }
+
     private var authorPhoneURL: URL? {
-        ContactSupport.phoneURL(resolvedPost.authorContact)
+        ContactSupport.phoneURL(authorPhoneText)
     }
 
     private var canShowQuickActions: Bool {
@@ -92,13 +102,18 @@ struct PostDetailView: View {
                 detailRow(icon: "star.leadinghalf.filled", title: "\(authorRole.ratingLabel): \(store.ratingSummary(for: resolvedPost.authorID).detailText)")
                 detailRow(icon: "tag", title: resolvedPost.category.title)
                 detailRow(icon: "person", title: resolvedPost.authorName)
-                detailRow(icon: "envelope", title: resolvedPost.authorContact)
+                if let authorEmailText {
+                    detailRow(icon: "envelope", title: authorEmailText)
+                }
+                if let authorPhoneText {
+                    detailRow(icon: "phone", title: authorPhoneText)
+                }
                 detailRow(icon: "mappin.and.ellipse", title: resolvedPost.location)
                 if resolvedPost.postType == .employerHiring && !resolvedPost.isActive {
                     detailRow(icon: "checkmark.seal.fill", title: "Position filled")
                 }
-                if !resolvedPost.payOrRate.isEmpty {
-                    detailRow(icon: "dollarsign.circle", title: resolvedPost.payOrRate)
+                if let payDisplay = CompensationSupport.formattedDisplay(resolvedPost.payOrRate) {
+                    detailRow(icon: "dollarsign.circle", title: payDisplay)
                 }
                 if !resolvedPost.schedule.isEmpty {
                     detailRow(icon: "calendar", title: resolvedPost.schedule)
@@ -160,41 +175,9 @@ struct PostDetailView: View {
                 }
             } else if store.canCurrentUserApply(to: resolvedPost) {
                 Section("Apply for This Job") {
-                    Text("Send a short introduction, your best contact info, and a photo of your ID so the business can review your application.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-
-                    TextField("Best contact info", text: $applicationContact)
-                        .textInputAutocapitalization(.never)
-
-                    TextEditor(text: $applicationMessage)
-                        .frame(minHeight: 120)
-
-                    PhotosPicker(selection: $selectedIDPhotoItem, matching: .images) {
-                        Label(
-                            selectedIDImageData == nil ? "Upload Government ID" : "Change Government ID",
-                            systemImage: "person.text.rectangle"
-                        )
-                    }
-
-                    if let selectedIDImageData,
-                       let previewImage = UIImage(data: selectedIDImageData) {
-                        Image(uiImage: previewImage)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(maxWidth: .infinity)
-                            .frame(minHeight: 180, maxHeight: 240)
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    } else {
-                        Text("A government ID photo is required for every job application.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Button("Send Application") {
-                        submitApplication()
-                    }
-                    .buttonStyle(.borderedProminent)
+                    applicationComposerCard
+                        .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
+                        .listRowBackground(Color.clear)
                 }
             }
 
@@ -233,6 +216,10 @@ struct PostDetailView: View {
             }
         }
         .navigationTitle("Post Details")
+        .navigationBarTitleDisplayMode(.inline)
+        .scrollContentBackground(.hidden)
+        .background(AppChromeBackground())
+        .appKeyboardDismissable()
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 ShareLink(item: shareText) {
@@ -248,7 +235,10 @@ struct PostDetailView: View {
         }
         .onAppear {
             if applicationContact.isEmpty {
-                applicationContact = store.currentUser?.marketplaceEmail ?? store.currentUser?.email ?? ""
+                applicationContact = store.currentUser?.preferredPhone
+                    ?? store.currentUser?.marketplaceEmail
+                    ?? store.currentUser?.email
+                    ?? ""
             }
             if let currentRating = existingRating {
                 selectedRating = currentRating.score
@@ -260,6 +250,7 @@ struct PostDetailView: View {
     }
 
     private func submitRating() {
+        UIApplication.shared.dismissAppKeyboard()
         do {
             try store.submitRating(score: selectedRating, comment: ratingComment, for: resolvedPost.authorID)
             ratingFeedbackMessage = "Rating saved."
@@ -269,6 +260,7 @@ struct PostDetailView: View {
     }
 
     private func submitApplication() {
+        UIApplication.shared.dismissAppKeyboard()
         do {
             try store.applyToPost(
                 post: resolvedPost,
@@ -301,6 +293,133 @@ struct PostDetailView: View {
         Label(title, systemImage: icon)
     }
 
+    private var applicationComposerCard: some View {
+        AppPanel {
+            VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 8) {
+                    AppBadge(title: "Worker application", systemImage: "paperplane.fill", tint: .accentColor)
+
+                    Text("Send a clear intro and a reliable contact")
+                        .font(.headline)
+
+                    Text("Businesses review your message, your best contact info, and a government ID photo together.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Divider()
+                    .opacity(0.45)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Best contact info")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    HStack(spacing: 10) {
+                        Image(systemName: "person.crop.circle.badge.checkmark")
+                            .font(.headline)
+                            .foregroundStyle(Color.accentColor)
+
+                        TextField("Phone or email the business should use", text: $applicationContact)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                    }
+                    .appFieldStyle()
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text("Short introduction")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(applicationMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Required" : "Ready")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(applicationMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .orange : .green)
+                    }
+
+                    ZStack(alignment: .topLeading) {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(Color.primary.opacity(0.04))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
+                            }
+
+                        TextEditor(text: $applicationMessage)
+                            .scrollContentBackground(.hidden)
+                            .frame(minHeight: 150)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+
+                        if applicationMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text("Introduce yourself, mention relevant experience, and say why this role fits you.")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 18)
+                                .padding(.vertical, 18)
+                                .allowsHitTesting(false)
+                        }
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("Government ID")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        AppBadge(
+                            title: selectedIDImageData == nil ? "Required" : "Attached",
+                            systemImage: selectedIDImageData == nil ? "exclamationmark.triangle.fill" : "checkmark.circle.fill",
+                            tint: selectedIDImageData == nil ? .orange : .green
+                        )
+                    }
+
+                    PhotosPicker(selection: $selectedIDPhotoItem, matching: .images) {
+                        Label(
+                            selectedIDImageData == nil ? "Upload Government ID" : "Change Government ID",
+                            systemImage: "person.text.rectangle"
+                        )
+                    }
+                    .buttonStyle(AppSecondaryButtonStyle(tint: .accentColor))
+
+                    if let selectedIDImageData,
+                       let previewImage = UIImage(data: selectedIDImageData) {
+                        Image(uiImage: previewImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: .infinity)
+                            .frame(minHeight: 180, maxHeight: 240)
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
+                            }
+                    } else {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label("A government ID photo is required for every application.", systemImage: "checkmark.shield")
+                                .font(.footnote.weight(.semibold))
+                            Text("Use a clear photo so the business can review your submission quickly.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .appFieldStyle(verticalPadding: 16)
+                    }
+                }
+
+                Button("Send Application") {
+                    submitApplication()
+                }
+                .buttonStyle(AppPrimaryButtonStyle())
+                .disabled(!canSubmitApplication)
+                .opacity(canSubmitApplication ? 1 : 0.65)
+            }
+        }
+    }
+
     private var shareText: String {
         [
             resolvedPost.title,
@@ -310,6 +429,12 @@ struct PostDetailView: View {
         ]
         .filter { !$0.isEmpty }
         .joined(separator: " • ")
+    }
+
+    private var canSubmitApplication: Bool {
+        !applicationContact.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !applicationMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && selectedIDImageData != nil
     }
 
     private var reviewComposerCard: some View {
@@ -406,8 +531,7 @@ struct PostDetailView: View {
                 Text(existingRating == nil ? "Save Review" : "Update Review")
                     .frame(maxWidth: .infinity, alignment: .center)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            .buttonStyle(AppPrimaryButtonStyle())
         }
         .padding(16)
         .background(Color(uiColor: .secondarySystemBackground))

@@ -18,6 +18,7 @@
 		5E23FBCDB464F75C08A4D149 /* ProductViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E75C39070F59F6710A117248 /* ProductViews.swift */; };
 		6AEC7045C24BF3AC44607620 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 84C9993FF7B85D25EE91290E /* Assets.xcassets */; };
 		83B402B65439B39DEB1E28A2 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7A1D962C8796F5BBFC49828B /* Preview Assets.xcassets */; };
+		8586359C8B56B6CCDC050225 /* AppDesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E30B331F137D6BC6A44F889 /* AppDesignSystem.swift */; };
 		885B556412DDE64E1720C18C /* AppUser.swift in Sources */ = {isa = PBXBuildFile; fileRef = A995F28F6F88DEFC8AD75B9C /* AppUser.swift */; };
 		888FC6EB9FF9681C5988E86B /* ApplicationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07098560B618FDA21A455F87 /* ApplicationsView.swift */; };
 		98A19CEBE87992B0DF623DE5 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 720DB89A653B09E24AF1160A /* MainTabView.swift */; };
@@ -27,6 +28,7 @@
 		CD9F5A9C711483EE4AF94423 /* MediaViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6A1A6DD4A014D0034CC4AF6 /* MediaViews.swift */; };
 		EC79A665D038D356E71367CD /* JobPost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CA12479D9AD49FEF67C067C /* JobPost.swift */; };
 		F9FF4FC0D2F5FF45E8E60AF1 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80048DF97776C574C01BBF54 /* RootView.swift */; };
+		FA8B0F8764D874B1EF2CB008 /* AppLocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F681EDBC5EC699A9A088DCE /* AppLocationManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -34,11 +36,13 @@
 		2924F8B8B413B8D5D6AFC353 /* SmallBusinessApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SmallBusinessApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		311EBEAEC343C7D43EE03C9E /* CloudKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKitManager.swift; sourceTree = "<group>"; };
 		3A850F09673F4A5CA2F2BC7C /* JSONStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONStorage.swift; sourceTree = "<group>"; };
+		5F681EDBC5EC699A9A088DCE /* AppLocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLocationManager.swift; sourceTree = "<group>"; };
 		720DB89A653B09E24AF1160A /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		739CD9615DCFC5E7E19CE8C1 /* HomeFeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeFeedView.swift; sourceTree = "<group>"; };
 		79E12AE8A71FD175893E821E /* AppStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStore.swift; sourceTree = "<group>"; };
 		7A1D962C8796F5BBFC49828B /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		7A7EB68905FB7C366592D79F /* AccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
+		7E30B331F137D6BC6A44F889 /* AppDesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDesignSystem.swift; sourceTree = "<group>"; };
 		80048DF97776C574C01BBF54 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		84C9993FF7B85D25EE91290E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8CA12479D9AD49FEF67C067C /* JobPost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobPost.swift; sourceTree = "<group>"; };
@@ -57,6 +61,7 @@
 		1A9CF1959DAFD831CE8926BB /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				5F681EDBC5EC699A9A088DCE /* AppLocationManager.swift */,
 				311EBEAEC343C7D43EE03C9E /* CloudKitManager.swift */,
 				3A850F09673F4A5CA2F2BC7C /* JSONStorage.swift */,
 			);
@@ -194,6 +199,7 @@
 		E09092B0AD512F5CCD0D3B28 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				7E30B331F137D6BC6A44F889 /* AppDesignSystem.swift */,
 				D6A1A6DD4A014D0034CC4AF6 /* MediaViews.swift */,
 				E75C39070F59F6710A117248 /* ProductViews.swift */,
 			);
@@ -281,6 +287,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				1207BEFBFA014257C641E3F1 /* AccountView.swift in Sources */,
+				8586359C8B56B6CCDC050225 /* AppDesignSystem.swift in Sources */,
+				FA8B0F8764D874B1EF2CB008 /* AppLocationManager.swift in Sources */,
 				4E4F4F82DDF7383A7FB35000 /* AppStore.swift in Sources */,
 				885B556412DDE64E1720C18C /* AppUser.swift in Sources */,
 				888FC6EB9FF9681C5988E86B /* ApplicationsView.swift in Sources */,
@@ -435,6 +443,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = HireLocal;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "HireLocal uses your location to show nearby jobs and workers and to help fill posting addresses.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -462,6 +471,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = HireLocal;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "HireLocal uses your location to show nearby jobs and workers and to help fill posting addresses.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

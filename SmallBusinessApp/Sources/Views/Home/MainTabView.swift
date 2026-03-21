@@ -37,5 +37,8 @@ struct MainTabView: View {
                 Label("Account", systemImage: "person.crop.circle")
             }
         }
+        .tint(Color.accentColor)
+        .toolbarBackground(.visible, for: .tabBar)
+        .toolbarBackground(Color("BrandBackground").opacity(0.96), for: .tabBar)
     }
 }

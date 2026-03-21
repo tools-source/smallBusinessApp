@@ -5,9 +5,16 @@ enum ContactSupport {
         guard let value else { return nil }
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
+        guard !trimmed.contains("@") else { return nil }
 
-        let filtered = trimmed.filter { $0.isNumber || $0 == "+" }
-        return filtered.isEmpty ? nil : filtered
+        let digitCount = trimmed.filter(\.isNumber).count
+        guard digitCount >= 7 else { return nil }
+
+        let digits = trimmed.filter(\.isNumber)
+        let normalizedDigits = trimmed.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("+")
+            ? "+\(digits)"
+            : digits
+        return normalizedDigits.isEmpty ? nil : normalizedDigits
     }
 
     static func emailCandidate(primary: String?, fallback: String? = nil) -> String? {
@@ -39,6 +46,22 @@ enum ContactSupport {
     }
 }
 
+enum CompensationSupport {
+    static func formattedDisplay(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        guard !trimmed.contains("$") else { return trimmed }
+
+        if let firstCharacter = trimmed.first,
+           firstCharacter.isNumber || firstCharacter == "." {
+            return "$\(trimmed)"
+        }
+
+        return trimmed
+    }
+}
+
 struct DashboardStatCard: View {
     let title: String
     let value: String
@@ -48,12 +71,13 @@ struct DashboardStatCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label(title, systemImage: systemImage)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(tint)
+            AppBadge(title: title, systemImage: systemImage, tint: tint)
 
             Text(value)
-                .font(.title3.weight(.bold))
+                .font(.system(.title2, design: .rounded).weight(.bold))
+                .monospacedDigit()
+
+            Spacer(minLength: 0)
 
             if let caption {
                 Text(caption)
@@ -62,14 +86,8 @@ struct DashboardStatCard: View {
                     .lineLimit(2)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(Color(uiColor: .secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.05), lineWidth: 1)
-        }
+        .frame(maxWidth: .infinity, minHeight: 154, alignment: .topLeading)
+        .appPanelStyle(padding: 16, cornerRadius: 22)
     }
 }
 
@@ -81,14 +99,22 @@ struct QuickActionLink: View {
 
     var body: some View {
         Link(destination: url) {
-            Label(title, systemImage: systemImage)
-                .font(.subheadline.weight(.semibold))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .padding(.horizontal, 10)
-                .background(tint.opacity(0.14))
-                .foregroundStyle(tint)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            HStack(spacing: 10) {
+                Image(systemName: systemImage)
+                    .font(.headline.weight(.bold))
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 13)
+            .background(tint.opacity(0.14))
+            .foregroundStyle(tint)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(tint.opacity(0.18), lineWidth: 1)
+            }
         }
         .buttonStyle(.plain)
     }

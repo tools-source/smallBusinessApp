@@ -55,16 +55,25 @@ struct UserAvatarView: View {
     var body: some View {
         StoredMediaImageView(fileName: imageFileName) {
             Circle()
-                .fill(Color.accentColor.opacity(0.14))
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            AppTint.role(fallbackRole).opacity(0.26),
+                            AppTheme.warmSand.opacity(0.18)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
                 .overlay {
                     if fallbackRole == .worker {
                         Text(initials)
                             .font(.system(size: size * 0.32, weight: .bold))
-                            .foregroundStyle(Color.accentColor)
+                            .foregroundStyle(AppTint.role(fallbackRole))
                     } else {
                         Image(systemName: fallbackRole.icon)
                             .font(.system(size: size * 0.42, weight: .semibold))
-                            .foregroundStyle(Color.accentColor)
+                            .foregroundStyle(AppTint.role(fallbackRole))
                     }
                 }
         }
@@ -72,8 +81,9 @@ struct UserAvatarView: View {
         .clipShape(Circle())
         .overlay {
             Circle()
-                .strokeBorder(Color.secondary.opacity(0.16), lineWidth: 1)
+                .strokeBorder(Color.white.opacity(0.32), lineWidth: 1)
         }
+        .shadow(color: Color.black.opacity(0.10), radius: 10, x: 0, y: 6)
     }
 
     private var imageFileName: String? {
@@ -98,7 +108,7 @@ struct DocumentPreviewView: View {
     var body: some View {
         StoredMediaImageView(fileName: fileName, contentMode: .fit) {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.secondary.opacity(0.12))
+                .fill(Color.secondary.opacity(0.10))
                 .overlay {
                     Label("ID Image Not Available", systemImage: "doc.text.image")
                         .font(.footnote.weight(.semibold))
@@ -107,8 +117,7 @@ struct DocumentPreviewView: View {
         }
         .frame(maxWidth: .infinity)
         .frame(minHeight: 180, maxHeight: 240)
-        .background(Color.secondary.opacity(0.06))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .appPanelStyle(padding: 0, cornerRadius: 20)
     }
 }
 
@@ -119,7 +128,7 @@ struct ProfilePhotoPreviewView: View {
     var body: some View {
         StoredMediaImageView(fileName: fileName, contentMode: .fit) {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.secondary.opacity(0.12))
+                .fill(Color.secondary.opacity(0.10))
                 .overlay {
                     VStack(spacing: 10) {
                         Image(systemName: "person.crop.square")
@@ -132,14 +141,13 @@ struct ProfilePhotoPreviewView: View {
         }
         .frame(maxWidth: .infinity)
         .frame(minHeight: 180, maxHeight: 240)
-        .background(Color.secondary.opacity(0.06))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .appPanelStyle(padding: 0, cornerRadius: 20)
         .overlay(alignment: .bottomLeading) {
             Text(fallbackName)
                 .font(.caption.weight(.semibold))
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .background(.thinMaterial)
+                .background(.ultraThinMaterial)
                 .clipShape(Capsule())
                 .padding(12)
         }

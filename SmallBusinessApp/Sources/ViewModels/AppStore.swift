@@ -88,6 +88,14 @@ final class AppStore: ObservableObject {
         user(for: userID)?.profileImageFileName
     }
 
+    func phone(for userID: String) -> String? {
+        user(for: userID)?.preferredPhone
+    }
+
+    func address(for userID: String) -> String? {
+        user(for: userID)?.preferredAddress
+    }
+
     func imageData(fileName: String?) -> Data? {
         guard let fileName, !fileName.isEmpty else { return nil }
         return storage.loadData(fileName: fileName)
@@ -168,10 +176,7 @@ final class AppStore: ObservableObject {
 
     var canCurrentUserPublishPosts: Bool {
         guard let currentUser else { return false }
-        if currentUser.role == .business {
-            return currentUser.businessProfileIsComplete
-        }
-        return true
+        return currentUser.postingProfileIsComplete
     }
 
     func signUp(fullName: String, email: String, password: String, role: UserRole) throws {
@@ -326,6 +331,8 @@ final class AppStore: ObservableObject {
     func updateCurrentAccountProfile(
         fullName: String,
         publicEmail: String,
+        workerAddress: String,
+        workerPhone: String,
         businessName: String,
         businessAddress: String,
         businessPhone: String
@@ -337,6 +344,8 @@ final class AppStore: ObservableObject {
 
         let cleanFullName = fullName.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanPublicEmail = publicEmail.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let cleanWorkerAddress = workerAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanWorkerPhone = workerPhone.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanBusinessName = businessName.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanBusinessAddress = businessAddress.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanBusinessPhone = businessPhone.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -365,6 +374,8 @@ final class AppStore: ObservableObject {
         case .worker:
             guard !cleanFullName.isEmpty else { throw AppError.missingField("Full Name") }
             updatedUser.fullName = cleanFullName
+            updatedUser.workerAddress = cleanWorkerAddress.isEmpty ? nil : cleanWorkerAddress
+            updatedUser.workerPhone = cleanWorkerPhone.isEmpty ? nil : cleanWorkerPhone
         case .business:
             updatedUser.businessName = cleanBusinessName.isEmpty ? nil : cleanBusinessName
             updatedUser.businessAddress = cleanBusinessAddress.isEmpty ? nil : cleanBusinessAddress
@@ -391,7 +402,7 @@ final class AppStore: ObservableObject {
         guard currentUser.role.allowedPostType == postType else {
             throw AppError.invalidPostTypeForRole(currentUser.role)
         }
-        try ensureBusinessProfileCanPublish(for: currentUser)
+        try ensureUserCanPublishPosts(for: currentUser)
 
         let draft = try validatedPostDraft(
             title: title,
@@ -442,7 +453,7 @@ final class AppStore: ObservableObject {
         guard posts[index].authorRole == currentUser.role else {
             throw AppError.invalidPostTypeForRole(currentUser.role)
         }
-        try ensureBusinessProfileCanPublish(for: currentUser)
+        try ensureUserCanPublishPosts(for: currentUser)
 
         let draft = try validatedPostDraft(
             title: title,
@@ -703,10 +714,16 @@ final class AppStore: ObservableObject {
         )
     }
 
-    private func ensureBusinessProfileCanPublish(for user: AppUser) throws {
-        guard user.role == .business else { return }
-        guard user.businessProfileIsComplete else {
-            throw AppError.businessProfileIncomplete(fields: user.missingBusinessFields)
+    private func ensureUserCanPublishPosts(for user: AppUser) throws {
+        switch user.role {
+        case .business:
+            guard user.businessProfileIsComplete else {
+                throw AppError.businessProfileIncomplete(fields: user.missingBusinessFields)
+            }
+        case .worker:
+            guard user.workerProfileIsComplete else {
+                throw AppError.workerProfileIncomplete(fields: user.missingWorkerFields)
+            }
         }
     }
 
@@ -781,6 +798,7 @@ enum AppError: LocalizedError {
     case portalMismatch(expected: UserRole)
     case invalidPostTypeForRole(UserRole)
     case businessProfileIncomplete(fields: [String])
+    case workerProfileIncomplete(fields: [String])
     case invalidRatingScore
     case ratingCommentRequired
     case cannotRateYourself
@@ -832,6 +850,9 @@ enum AppError: LocalizedError {
         case .businessProfileIncomplete(let fields):
             let joined = fields.joined(separator: ", ")
             return "Complete your business profile before posting. Missing: \(joined)."
+        case .workerProfileIncomplete(let fields):
+            let joined = fields.joined(separator: ", ")
+            return "Complete your worker profile before posting. Missing: \(joined)."
         case .invalidRatingScore:
             return "Please choose a rating from 1 to 5."
         case .ratingCommentRequired:

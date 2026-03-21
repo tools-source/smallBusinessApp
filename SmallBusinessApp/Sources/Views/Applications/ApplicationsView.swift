@@ -76,55 +76,49 @@ struct ApplicationsView: View {
     }
 
     var body: some View {
-        List {
-            Section {
-                EmptyView()
-            } header: {
+        ScrollView {
+            VStack(spacing: AppTheme.sectionSpacing) {
                 applicationsHeader
-                    .textCase(nil)
-                    .listRowInsets(.init())
-            }
 
-            if currentRole == .business {
-                ForEach(receivedGroups) { group in
-                    Section {
-                        ForEach(group.applications) { application in
-                            NavigationLink {
-                                ApplicationDetailView(applicationID: application.id)
-                            } label: {
-                                ApplicationRowView(application: application, perspective: .business)
-                            }
-                        }
-                    } header: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(group.postTitle)
-                            Text("\(group.applications.count) \(group.applications.count == 1 ? "application" : "applications")")
-                                .font(.caption)
+                if isEmptyStateVisible {
+                    AppPanel {
+                        VStack(spacing: 14) {
+                            Image(systemName: emptySystemImage)
+                                .font(.system(size: 30, weight: .semibold))
                                 .foregroundStyle(.secondary)
+
+                            Text(emptyTitle)
+                                .font(.headline)
+
+                            Text(emptyMessage)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
                         }
+                        .frame(maxWidth: .infinity)
                     }
-                }
-            } else {
-                ForEach(submittedApplications) { application in
-                    NavigationLink {
-                        ApplicationDetailView(applicationID: application.id)
-                    } label: {
-                        ApplicationRowView(application: application, perspective: .worker)
+                } else if currentRole == .business {
+                    ForEach(receivedGroups) { group in
+                        receivedGroupCard(group)
+                    }
+                } else {
+                    ForEach(submittedApplications) { application in
+                        NavigationLink {
+                            ApplicationDetailView(applicationID: application.id)
+                        } label: {
+                            ApplicationRowView(application: application, perspective: .worker)
+                                .appPanelStyle(padding: 18, cornerRadius: 24)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
+            .padding(.horizontal, AppTheme.screenPadding)
+            .padding(.vertical, 20)
         }
+        .background(AppChromeBackground())
         .navigationTitle(initialPostID == nil ? "Applications" : "Job Applications")
-        .navigationBarTitleDisplayMode(.large)
-        .overlay {
-            if isEmptyStateVisible {
-                ContentUnavailableView(
-                    emptyTitle,
-                    systemImage: emptySystemImage,
-                    description: Text(emptyMessage)
-                )
-            }
-        }
+        .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             if currentRole == .worker && statusFilter == .open && submittedApplications.isEmpty {
                 statusFilter = .all
@@ -154,23 +148,31 @@ struct ApplicationsView: View {
     }
 
     private var applicationsHeader: some View {
-        VStack(spacing: 12) {
-            summaryStrip
+        AppPanel {
+            VStack(alignment: .leading, spacing: 16) {
+                AppBadge(
+                    title: currentRole == .business ? "Business inbox" : "Worker tracking",
+                    systemImage: currentRole.icon,
+                    tint: AppTint.role(currentRole)
+                )
 
-            Picker("Status", selection: $statusFilter) {
-                ForEach(ApplicationStatusFilter.allCases) { filter in
-                    Text(filter.rawValue).tag(filter)
+                AppSectionHeader(
+                    eyebrow: "Applications",
+                    title: currentRole == .business ? "Review incoming candidates" : "Track every application",
+                    subtitle: currentRole == .business
+                        ? "Group applications by opening, update status quickly, and keep the hiring queue organized."
+                        : "See which businesses reviewed you, contacted you, or moved you into a hire."
+                )
+
+                summaryStrip
+
+                Picker("Status", selection: $statusFilter) {
+                    ForEach(ApplicationStatusFilter.allCases) { filter in
+                        Text(filter.rawValue).tag(filter)
+                    }
                 }
+                .pickerStyle(.segmented)
             }
-            .pickerStyle(.segmented)
-        }
-        .padding(.horizontal)
-        .padding(.top, 8)
-        .padding(.bottom, 10)
-        .background(Color(uiColor: .systemBackground))
-        .overlay(alignment: .bottom) {
-            Divider()
-                .opacity(0.65)
         }
     }
 
@@ -213,6 +215,45 @@ struct ApplicationsView: View {
             .padding(.vertical, 2)
         }
     }
+
+    private func receivedGroupCard(_ group: ApplicationGroup) -> some View {
+        AppPanel {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(group.postTitle)
+                            .font(.headline)
+
+                        Text("\(group.applications.count) \(group.applications.count == 1 ? "application" : "applications")")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    AppBadge(
+                        title: group.applications.first?.status.title ?? "Open",
+                        systemImage: group.applications.first?.status.systemImage,
+                        tint: AppTint.status(group.applications.first?.status ?? .pending)
+                    )
+                }
+
+                ForEach(Array(group.applications.enumerated()), id: \.element.id) { index, application in
+                    if index > 0 {
+                        Divider()
+                            .opacity(0.45)
+                    }
+
+                    NavigationLink {
+                        ApplicationDetailView(applicationID: application.id)
+                    } label: {
+                        ApplicationRowView(application: application, perspective: .business)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
 }
 
 private struct ApplicationRowView: View {
@@ -222,8 +263,8 @@ private struct ApplicationRowView: View {
     let perspective: UserRole
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top) {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
                 if perspective == .business {
                     UserAvatarView(
                         user: store.user(for: application.workerUserID),
@@ -235,17 +276,24 @@ private struct ApplicationRowView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Label(application.status.title, systemImage: application.status.systemImage)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Color.accentColor)
+                    AppBadge(
+                        title: application.status.title,
+                        systemImage: application.status.systemImage,
+                        tint: AppTint.status(application.status)
+                    )
                     Text(title)
-                        .font(.headline)
+                        .font(.headline.weight(.semibold))
                 }
 
                 Spacer()
-                Text(application.updatedAt.formatted(date: .abbreviated, time: .shortened))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(application.updatedAt.formatted(date: .abbreviated, time: .omitted))
+                        .font(.caption.weight(.semibold))
+                    Text(application.updatedAt.formatted(date: .omitted, time: .shortened))
+                        .font(.caption2)
+                }
+                .foregroundStyle(.secondary)
             }
 
             Text(subtitle)
@@ -256,8 +304,11 @@ private struct ApplicationRowView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(Color.primary.opacity(0.05))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
-        .padding(.vertical, 4)
     }
 
     private var title: String {
@@ -304,10 +355,10 @@ struct ApplicationDetailView: View {
                                 .pickerStyle(.menu)
 
                                 Label(application.status.title, systemImage: application.status.systemImage)
-                                    .foregroundStyle(Color.accentColor)
+                                    .foregroundStyle(AppTint.status(application.status))
                             } else {
                                 Label(application.status.title, systemImage: application.status.systemImage)
-                                    .foregroundStyle(Color.accentColor)
+                                    .foregroundStyle(AppTint.status(application.status))
                                 Text("This hire is finalized. The related posts were removed and the application status is now locked.")
                                     .font(.footnote)
                                     .foregroundStyle(.secondary)
@@ -316,6 +367,7 @@ struct ApplicationDetailView: View {
                     } else {
                         Section("Application Status") {
                             Label(application.status.title, systemImage: application.status.systemImage)
+                                .foregroundStyle(AppTint.status(application.status))
                             Text("Businesses update your application status here as they review it.")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
@@ -366,6 +418,9 @@ struct ApplicationDetailView: View {
                             Label(application.businessName, systemImage: UserRole.business.icon)
                             if let businessContact = businessContact(for: application) {
                                 Label(businessContact, systemImage: "envelope")
+                            }
+                            if let businessPhone = businessPhone(for: application) {
+                                Label(businessPhone, systemImage: "phone")
                             }
                             Label(
                                 "Business rating: \(store.ratingSummary(for: application.businessUserID).detailText)",
@@ -443,6 +498,9 @@ struct ApplicationDetailView: View {
                     }
                 }
                 .navigationTitle("Application")
+                .navigationBarTitleDisplayMode(.inline)
+                .scrollContentBackground(.hidden)
+                .background(AppChromeBackground())
             } else {
                 ContentUnavailableView(
                     "Application Missing",
@@ -450,6 +508,8 @@ struct ApplicationDetailView: View {
                     description: Text("This application is no longer available.")
                 )
                 .navigationTitle("Application")
+                .navigationBarTitleDisplayMode(.inline)
+                .background(AppChromeBackground())
             }
         }
     }
@@ -468,7 +528,20 @@ struct ApplicationDetailView: View {
     }
 
     private func businessContact(for application: JobApplication) -> String? {
-        application.businessContact ?? store.post(for: application.postID)?.authorContact
+        application.businessContact
+            ?? store.user(for: application.businessUserID)?.marketplaceEmail
+            ?? store.post(for: application.postID)?.authorContact
+    }
+
+    private func businessPhone(for application: JobApplication) -> String? {
+        store.phone(for: application.businessUserID)
+            ?? ContactSupport.phoneCandidate(primary: application.businessContact)
+            ?? ContactSupport.phoneCandidate(primary: store.post(for: application.postID)?.authorContact)
+    }
+
+    private func workerPhone(for application: JobApplication) -> String? {
+        store.phone(for: application.workerUserID)
+            ?? ContactSupport.phoneCandidate(primary: application.workerContact)
     }
 
     private func jobLocation(for application: JobApplication) -> String? {
@@ -491,10 +564,10 @@ struct ApplicationDetailView: View {
     private func jobPay(for application: JobApplication) -> String? {
         let value = application.postPayOrRate.trimmingCharacters(in: .whitespacesAndNewlines)
         if !value.isEmpty {
-            return value
+            return CompensationSupport.formattedDisplay(value)
         }
         let liveValue = store.post(for: application.postID)?.payOrRate ?? ""
-        return liveValue.isEmpty ? nil : liveValue
+        return CompensationSupport.formattedDisplay(liveValue)
     }
 
     private func emailURL(for application: JobApplication) -> URL? {
@@ -506,9 +579,9 @@ struct ApplicationDetailView: View {
 
     private func phoneURL(for application: JobApplication) -> URL? {
         if isBusinessOwner(application) {
-            return ContactSupport.phoneURL(application.workerContact)
+            return ContactSupport.phoneURL(workerPhone(for: application))
         }
-        return ContactSupport.phoneURL(businessContact(for: application))
+        return ContactSupport.phoneURL(businessPhone(for: application))
     }
 
     private func quickActionsAvailable(for application: JobApplication) -> Bool {

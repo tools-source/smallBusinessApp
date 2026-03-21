@@ -9,229 +9,47 @@ struct AccountView: View {
     @State private var selectedProfilePhotoItem: PhotosPickerItem?
     @State private var fullNameDraft = ""
     @State private var publicEmailDraft = ""
+    @State private var workerAddressDraft = ""
+    @State private var workerPhoneDraft = ""
     @State private var businessNameDraft = ""
     @State private var businessAddressDraft = ""
     @State private var businessPhoneDraft = ""
 
     var body: some View {
-        List {
-            if let currentUser = store.currentUser {
-                Section("Profile") {
-                    HStack(spacing: 14) {
-                        UserAvatarView(
-                            user: currentUser,
-                            fallbackName: currentUser.displayName,
-                            fallbackRole: currentUser.role,
-                            size: 72
-                        )
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(currentUser.displayName)
-                                .font(.headline)
-                            Text(currentUser.emailDisplayText)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            Text(currentUser.role.title)
-                                .font(.footnote.weight(.semibold))
-                                .foregroundStyle(Color.accentColor)
-                        }
-                    }
+        ScrollView {
+            VStack(spacing: AppTheme.sectionSpacing) {
+                if let currentUser = store.currentUser {
+                    profilePanel(for: currentUser)
 
                     if currentUser.role == .worker {
-                        TextField("Full Name", text: $fullNameDraft)
-                            .textInputAutocapitalization(.words)
-                            .autocorrectionDisabled()
-                    } else {
-                        TextField("Business Name", text: $businessNameDraft)
-                            .textInputAutocapitalization(.words)
-                            .autocorrectionDisabled()
-                        TextField("Business Address", text: $businessAddressDraft)
-                            .textInputAutocapitalization(.words)
-                        TextField("Business Phone", text: $businessPhoneDraft)
-                            .keyboardType(.phonePad)
+                        profilePhotoPanel(for: currentUser)
                     }
 
-                    TextField(currentUser.authProvider == .manual ? "Email" : "Public Email", text: $publicEmailDraft)
-                        .keyboardType(.emailAddress)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-
-                    Button("Save Profile") {
-                        saveProfile()
-                    }
-                    .buttonStyle(.borderedProminent)
-
-                    if currentUser.authProvider == .apple && currentUser.hasHiddenAppleEmail {
-                        Text("Apple may hide your real email address. Add a public email above so people in the app see your actual contact email instead of a relay address.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    if currentUser.role == .business {
-                        Label(currentUser.businessName ?? "Business name missing", systemImage: "building.2")
-                        Label(currentUser.businessAddress ?? "Business address missing", systemImage: "mappin.and.ellipse")
-                        Label(currentUser.businessPhone ?? "Business phone missing", systemImage: "phone.fill")
-
-                        if !currentUser.businessProfileIsComplete {
-                            Text("Complete business name, address, and phone before publishing job openings.")
-                                .font(.footnote)
-                                .foregroundStyle(.orange)
-                        }
-                    }
-
-                    Label(currentUser.emailDisplayText, systemImage: "envelope.fill")
-                    Label(currentUser.role.title, systemImage: "person.text.rectangle")
-                    Label("Signed in with \(currentUser.authProvider.displayName)", systemImage: "key.fill")
+                    overviewPanel(for: currentUser)
+                    ratingsPanel(for: currentUser)
+                    applicationsPanel(for: currentUser)
                 }
 
-                if currentUser.role == .worker {
-                    Section("Worker Profile Photo") {
-                        PhotosPicker(selection: $selectedProfilePhotoItem, matching: .images) {
-                            Label(
-                                currentUser.profileImageFileName == nil ? "Upload Profile Photo" : "Change Profile Photo",
-                                systemImage: "photo.badge.plus"
-                            )
-                        }
-
-                        if currentUser.profileImageFileName != nil {
-                            Button(role: .destructive) {
-                                removeProfilePhoto()
-                            } label: {
-                                Label("Remove Profile Photo", systemImage: "trash")
-                            }
-                        }
-
-                        Text("Your worker photo appears on your worker posts and on job applications you send.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Section("Overview") {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 12) {
-                            DashboardStatCard(
-                                title: "Rating",
-                                value: store.ratingSummary(for: currentUser.id).compactText,
-                                systemImage: "star.fill",
-                                caption: currentUser.role.ratingLabel,
-                                tint: .accentColor
-                            )
-                            .frame(width: 180)
-
-                            DashboardStatCard(
-                                title: "Posts",
-                                value: "\(store.myPosts.count)",
-                                systemImage: rolePostIcon(for: currentUser.role),
-                                caption: currentUser.role == .business ? "Openings or completed hiring records" : "Public worker profiles you've published",
-                                tint: .orange
-                            )
-                            .frame(width: 180)
-
-                            DashboardStatCard(
-                                title: "Applications",
-                                value: currentUser.role == .business ? "\(store.myReceivedApplications.count)" : "\(store.mySubmittedApplications.count)",
-                                systemImage: currentUser.role == .business ? "tray.full.fill" : "paperplane.fill",
-                                caption: currentUser.role == .business ? "Applications received by your business" : "Applications you have sent to businesses",
-                                tint: .green
-                            )
-                            .frame(width: 180)
-
-                            if currentUser.role == .worker {
-                                DashboardStatCard(
-                                    title: "Profile Ready",
-                                    value: currentUser.profileImageFileName == nil ? "Needs Photo" : "Complete",
-                                    systemImage: currentUser.profileImageFileName == nil ? "person.crop.circle.badge.exclamationmark" : "checkmark.circle.fill",
-                                    caption: currentUser.profileImageFileName == nil ? "Add a profile photo to look more credible to businesses" : "Your photo appears on posts and applications",
-                                    tint: currentUser.profileImageFileName == nil ? .orange : .green
-                                )
-                                .frame(width: 180)
-                            } else {
-                                DashboardStatCard(
-                                    title: "Business Ready",
-                                    value: currentUser.businessProfileIsComplete ? "Complete" : "Needs Info",
-                                    systemImage: currentUser.businessProfileIsComplete ? "checkmark.shield.fill" : "building.2.crop.circle.badge.exclamationmark",
-                                    caption: currentUser.businessProfileIsComplete ? "Your business account can publish openings" : "Add name, address, and phone before posting",
-                                    tint: currentUser.businessProfileIsComplete ? .green : .orange
-                                )
-                                .frame(width: 180)
-                            }
-                        }
-                        .padding(.vertical, 2)
-                    }
-                }
-
-                Section("Rating") {
-                    Label(currentUser.role.ratingLabel, systemImage: "star.fill")
-                    Text(store.ratingSummary(for: currentUser.id).detailText)
-                        .foregroundStyle(.secondary)
-
-                    if receivedRatings.isEmpty {
-                        Text("No ratings yet")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(receivedRatings) { rating in
-                            reviewRow(for: rating)
-                        }
-                    }
-                }
-
-                Section("Applications") {
-                    if currentUser.role == .business {
-                        Label("\(store.myReceivedApplications.count) received", systemImage: "tray.full")
-                    } else {
-                        Label("\(store.mySubmittedApplications.count) sent", systemImage: "paperplane")
-                    }
-                }
-            }
-
-            Section("Workspace") {
-                Button {
-                    store.selectedTab = .create
-                } label: {
-                    Label("Manage Posts in Create Tab", systemImage: "square.and.pencil")
-                }
-
-                Button {
-                    store.selectedTab = .applications
-                } label: {
-                    Label(
-                        store.currentUser?.role == .business ? "Open Business Applications" : "Open My Applications",
-                        systemImage: "tray.full"
-                    )
-                }
-
-                Text(workspaceMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section {
-                Button(role: .destructive) {
-                    store.logout()
-                } label: {
-                    Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")
-                }
-            }
-
-            Section {
-                Button(role: .destructive) {
-                    showingDeleteAccountAlert = true
-                } label: {
-                    Label("Delete Account", systemImage: "person.crop.circle.badge.xmark")
-                }
-
-                Text("Deleting your account permanently removes your profile, posts, applications, and ratings.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                workspacePanel
+                sessionPanel
+                dangerPanel
 
                 if !feedbackMessage.isEmpty {
-                    Text(feedbackMessage)
-                        .font(.footnote)
-                        .foregroundStyle(feedbackColor)
+                    AppPanel {
+                        Text(feedbackMessage)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(feedbackColor)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
             }
+            .padding(.horizontal, AppTheme.screenPadding)
+            .padding(.vertical, 20)
         }
+        .background(AppChromeBackground())
         .navigationTitle("Account")
+        .navigationBarTitleDisplayMode(.inline)
+        .appKeyboardDismissable()
         .onAppear {
             loadDrafts(from: store.currentUser)
         }
@@ -267,7 +85,367 @@ struct AccountView: View {
             }
             return "Finish your business name, address, and phone here first. After that, the Create tab will let you publish openings."
         }
-        return "Use the Create tab to publish, edit, and remove your public worker profiles. Track every application in the applications tab."
+        if currentUser.workerProfileIsComplete {
+            return "Use the Create tab to publish, edit, and remove your public worker profiles. Track every application in the applications tab."
+        }
+        return "Finish your phone number and address here first. After that, the Create tab will let you publish worker profiles."
+    }
+
+    private func fieldBlock<Content: View>(
+        title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            content()
+        }
+    }
+
+    private func profilePanel(for currentUser: AppUser) -> some View {
+        AppPanel {
+            VStack(alignment: .leading, spacing: 18) {
+                AppBadge(title: currentUser.role.title, systemImage: currentUser.role.icon, tint: AppTint.role(currentUser.role))
+
+                HStack(alignment: .top, spacing: 14) {
+                    UserAvatarView(
+                        user: currentUser,
+                        fallbackName: currentUser.displayName,
+                        fallbackRole: currentUser.role,
+                        size: 74
+                    )
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(currentUser.displayName)
+                            .font(.title3.weight(.bold))
+                        Text(currentUser.emailDisplayText)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Text("Signed in with \(currentUser.authProvider.displayName)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                AppSectionHeader(
+                    eyebrow: "Profile",
+                    title: currentUser.role == .worker ? "Public identity" : "Business details",
+                    subtitle: currentUser.role == .worker
+                        ? "This information appears across your posts, ratings, and applications."
+                        : "Keep your business details complete so you can publish openings and look credible to workers."
+                )
+
+                if currentUser.role == .worker {
+                    fieldBlock(title: "Full Name") {
+                        TextField("Full Name", text: $fullNameDraft)
+                            .textInputAutocapitalization(.words)
+                            .autocorrectionDisabled()
+                            .appFieldStyle()
+                    }
+
+                    fieldBlock(title: "Address") {
+                        TextField("Street, city, state, zip", text: $workerAddressDraft)
+                            .textInputAutocapitalization(.words)
+                            .autocorrectionDisabled()
+                            .appFieldStyle()
+                    }
+
+                    fieldBlock(title: "Phone Number") {
+                        TextField("Phone Number", text: $workerPhoneDraft)
+                            .keyboardType(.phonePad)
+                            .appFieldStyle()
+                    }
+                } else {
+                    fieldBlock(title: "Business Name") {
+                        TextField("Business Name", text: $businessNameDraft)
+                            .textInputAutocapitalization(.words)
+                            .autocorrectionDisabled()
+                            .appFieldStyle()
+                    }
+
+                    fieldBlock(title: "Business Address") {
+                        TextField("Business Address", text: $businessAddressDraft)
+                            .textInputAutocapitalization(.words)
+                            .appFieldStyle()
+                    }
+
+                    fieldBlock(title: "Business Phone") {
+                        TextField("Business Phone", text: $businessPhoneDraft)
+                            .keyboardType(.phonePad)
+                            .appFieldStyle()
+                    }
+                }
+
+                fieldBlock(title: currentUser.authProvider == .manual ? "Email" : "Public Email") {
+                    TextField(currentUser.authProvider == .manual ? "Email" : "Public Email", text: $publicEmailDraft)
+                        .keyboardType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .appFieldStyle()
+                }
+
+                if currentUser.authProvider == .apple && currentUser.hasHiddenAppleEmail {
+                    Text("Apple may hide your real email address. Add a public email above so people in the app see your actual contact email instead of a relay address.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                if currentUser.role == .worker {
+                    VStack(alignment: .leading, spacing: 10) {
+                        AppBadge(
+                            title: currentUser.workerProfileIsComplete ? "Worker profile ready" : "Worker profile incomplete",
+                            systemImage: currentUser.workerProfileIsComplete ? "checkmark.shield.fill" : "person.crop.circle.badge.exclamationmark",
+                            tint: currentUser.workerProfileIsComplete ? .green : .orange
+                        )
+
+                        Label(currentUser.workerAddress ?? "Worker address missing", systemImage: "mappin.and.ellipse")
+                        Label(currentUser.workerPhone ?? "Worker phone missing", systemImage: "phone.fill")
+
+                        if !currentUser.workerProfileIsComplete {
+                            Text("Add your address and phone number before publishing worker posts.")
+                                .font(.footnote)
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                    .font(.subheadline)
+                }
+
+                if currentUser.role == .business {
+                    VStack(alignment: .leading, spacing: 10) {
+                        AppBadge(
+                            title: currentUser.businessProfileIsComplete ? "Business ready" : "Profile incomplete",
+                            systemImage: currentUser.businessProfileIsComplete ? "checkmark.shield.fill" : "building.2.crop.circle.badge.exclamationmark",
+                            tint: currentUser.businessProfileIsComplete ? .green : .orange
+                        )
+
+                        Label(currentUser.businessName ?? "Business name missing", systemImage: "building.2")
+                        Label(currentUser.businessAddress ?? "Business address missing", systemImage: "mappin.and.ellipse")
+                        Label(currentUser.businessPhone ?? "Business phone missing", systemImage: "phone.fill")
+
+                        if !currentUser.businessProfileIsComplete {
+                            Text("Complete business name, address, and phone before publishing job openings.")
+                                .font(.footnote)
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                    .font(.subheadline)
+                }
+
+                Button("Save Profile") {
+                    saveProfile()
+                }
+                .buttonStyle(AppPrimaryButtonStyle())
+            }
+        }
+    }
+
+    private func profilePhotoPanel(for currentUser: AppUser) -> some View {
+        AppPanel {
+            VStack(alignment: .leading, spacing: 16) {
+                AppSectionHeader(
+                    eyebrow: "Worker photo",
+                    title: "Profile image",
+                    subtitle: "Your photo appears on worker posts and job applications so businesses can recognize you."
+                )
+
+                ProfilePhotoPreviewView(
+                    fileName: currentUser.profileImageFileName,
+                    fallbackName: currentUser.displayName
+                )
+
+                PhotosPicker(selection: $selectedProfilePhotoItem, matching: .images) {
+                    Label(
+                        currentUser.profileImageFileName == nil ? "Upload Profile Photo" : "Change Profile Photo",
+                        systemImage: "photo.badge.plus"
+                    )
+                }
+                .buttonStyle(AppSecondaryButtonStyle(tint: .accentColor))
+
+                if currentUser.profileImageFileName != nil {
+                    Button(role: .destructive) {
+                        removeProfilePhoto()
+                    } label: {
+                        Label("Remove Profile Photo", systemImage: "trash")
+                    }
+                    .buttonStyle(AppSecondaryButtonStyle(tint: .red))
+                }
+            }
+        }
+    }
+
+    private func overviewPanel(for currentUser: AppUser) -> some View {
+        AppPanel {
+            VStack(alignment: .leading, spacing: 16) {
+                AppSectionHeader(
+                    eyebrow: "Overview",
+                    title: "Account snapshot",
+                    subtitle: "A quick read on trust, activity, and whether your profile is ready to operate."
+                )
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        DashboardStatCard(
+                            title: "Rating",
+                            value: store.ratingSummary(for: currentUser.id).compactText,
+                            systemImage: "star.fill",
+                            caption: currentUser.role.ratingLabel,
+                            tint: .accentColor
+                        )
+                        .frame(width: 180)
+
+                        DashboardStatCard(
+                            title: "Posts",
+                            value: "\(store.myPosts.count)",
+                            systemImage: rolePostIcon(for: currentUser.role),
+                            caption: currentUser.role == .business ? "Openings or completed hiring records" : "Public worker profiles you've published",
+                            tint: .orange
+                        )
+                        .frame(width: 180)
+
+                        DashboardStatCard(
+                            title: "Applications",
+                            value: currentUser.role == .business ? "\(store.myReceivedApplications.count)" : "\(store.mySubmittedApplications.count)",
+                            systemImage: currentUser.role == .business ? "tray.full.fill" : "paperplane.fill",
+                            caption: currentUser.role == .business ? "Applications received by your business" : "Applications you have sent to businesses",
+                            tint: .green
+                        )
+                        .frame(width: 180)
+
+                        if currentUser.role == .worker {
+                            DashboardStatCard(
+                                title: "Profile Ready",
+                                value: currentUser.workerProfileIsComplete ? "Ready" : "Needs Info",
+                                systemImage: currentUser.workerProfileIsComplete ? "checkmark.circle.fill" : "person.crop.circle.badge.exclamationmark",
+                                caption: currentUser.workerProfileIsComplete ? "Phone and address are filled in for posting" : "Add your phone number and address before posting worker profiles",
+                                tint: currentUser.workerProfileIsComplete ? .green : .orange
+                            )
+                            .frame(width: 180)
+                        } else {
+                            DashboardStatCard(
+                                title: "Business Ready",
+                                value: currentUser.businessProfileIsComplete ? "Complete" : "Needs Info",
+                                systemImage: currentUser.businessProfileIsComplete ? "checkmark.shield.fill" : "building.2.crop.circle.badge.exclamationmark",
+                                caption: currentUser.businessProfileIsComplete ? "Your business account can publish openings" : "Add name, address, and phone before posting",
+                                tint: currentUser.businessProfileIsComplete ? .green : .orange
+                            )
+                            .frame(width: 180)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+        }
+    }
+
+    private func ratingsPanel(for currentUser: AppUser) -> some View {
+        AppPanel {
+            VStack(alignment: .leading, spacing: 16) {
+                AppSectionHeader(
+                    eyebrow: "Rating",
+                    title: currentUser.role.ratingLabel,
+                    subtitle: store.ratingSummary(for: currentUser.id).detailText
+                )
+
+                if receivedRatings.isEmpty {
+                    Text("No ratings yet")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(receivedRatings) { rating in
+                        reviewRow(for: rating)
+                    }
+                }
+            }
+        }
+    }
+
+    private func applicationsPanel(for currentUser: AppUser) -> some View {
+        AppPanel {
+            VStack(alignment: .leading, spacing: 12) {
+                AppSectionHeader(
+                    eyebrow: "Applications",
+                    title: currentUser.role == .business ? "Hiring activity" : "Your submissions",
+                    subtitle: currentUser.role == .business
+                        ? "\(store.myReceivedApplications.count) received across your business."
+                        : "\(store.mySubmittedApplications.count) applications sent to businesses."
+                )
+
+                Label(
+                    currentUser.role == .business ? "\(store.myReceivedApplications.count) received" : "\(store.mySubmittedApplications.count) sent",
+                    systemImage: currentUser.role == .business ? "tray.full" : "paperplane"
+                )
+                .font(.subheadline.weight(.semibold))
+            }
+        }
+    }
+
+    private var workspacePanel: some View {
+        AppPanel {
+            VStack(alignment: .leading, spacing: 16) {
+                AppSectionHeader(
+                    eyebrow: "Workspace",
+                    title: "Jump to active areas",
+                    subtitle: workspaceMessage
+                )
+
+                Button {
+                    store.selectedTab = .create
+                } label: {
+                    Label("Manage Posts in Create Tab", systemImage: "square.and.pencil")
+                }
+                .buttonStyle(AppSecondaryButtonStyle(tint: .accentColor))
+
+                Button {
+                    store.selectedTab = .applications
+                } label: {
+                    Label(
+                        store.currentUser?.role == .business ? "Open Business Applications" : "Open My Applications",
+                        systemImage: "tray.full"
+                    )
+                }
+                .buttonStyle(AppSecondaryButtonStyle(tint: .green))
+            }
+        }
+    }
+
+    private var sessionPanel: some View {
+        AppPanel {
+            VStack(alignment: .leading, spacing: 12) {
+                AppSectionHeader(
+                    eyebrow: "Session",
+                    title: "Sign out of this device",
+                    subtitle: "Use this when you're done on a shared phone or want to switch accounts."
+                )
+
+                Button(role: .destructive) {
+                    store.logout()
+                } label: {
+                    Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")
+                }
+                .buttonStyle(AppSecondaryButtonStyle(tint: .red))
+            }
+        }
+    }
+
+    private var dangerPanel: some View {
+        AppPanel {
+            VStack(alignment: .leading, spacing: 12) {
+                AppSectionHeader(
+                    eyebrow: "Danger Zone",
+                    title: "Delete this account",
+                    subtitle: "Deleting your account permanently removes your profile, posts, applications, and ratings."
+                )
+
+                Button(role: .destructive) {
+                    showingDeleteAccountAlert = true
+                } label: {
+                    Label("Delete Account", systemImage: "person.crop.circle.badge.xmark")
+                }
+                .buttonStyle(AppSecondaryButtonStyle(tint: .red))
+            }
+        }
     }
 
     private func saveProfile() {
@@ -275,6 +453,8 @@ struct AccountView: View {
             try store.updateCurrentAccountProfile(
                 fullName: fullNameDraft,
                 publicEmail: publicEmailDraft,
+                workerAddress: workerAddressDraft,
+                workerPhone: workerPhoneDraft,
                 businessName: businessNameDraft,
                 businessAddress: businessAddressDraft,
                 businessPhone: businessPhoneDraft
@@ -291,6 +471,8 @@ struct AccountView: View {
         guard let user else { return }
         fullNameDraft = user.role == .worker ? user.fullName : ""
         publicEmailDraft = user.marketplaceEmail ?? ""
+        workerAddressDraft = user.workerAddress ?? ""
+        workerPhoneDraft = user.workerPhone ?? ""
         businessNameDraft = user.businessName ?? ""
         businessAddressDraft = user.businessAddress ?? ""
         businessPhoneDraft = user.businessPhone ?? ""
@@ -365,6 +547,6 @@ struct AccountView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.vertical, 6)
+        .appPanelStyle(padding: 14, cornerRadius: 20)
     }
 }

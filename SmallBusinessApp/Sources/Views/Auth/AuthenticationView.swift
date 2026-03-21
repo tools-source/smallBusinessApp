@@ -45,76 +45,113 @@ struct AuthenticationView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 20) {
+                VStack(spacing: AppTheme.sectionSpacing) {
                     hero
-                    portalSelector
-                    modeSelector
                     formCard
                     appleButton
                     if !feedbackMessage.isEmpty {
-                        Text(feedbackMessage)
-                            .font(.footnote)
-                            .foregroundStyle(.red)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
+                        feedbackPanel
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 28)
+                .padding(.horizontal, AppTheme.screenPadding)
+                .padding(.vertical, 24)
             }
-            .background(Color("BrandBackground").ignoresSafeArea())
+            .background(AppChromeBackground())
             .navigationBarTitleDisplayMode(.inline)
+            .appKeyboardDismissable()
         }
     }
 
     private var hero: some View {
-        VStack(spacing: 10) {
-            Image(systemName: portal.icon)
-                .font(.system(size: 54))
-                .symbolRenderingMode(.palette)
-                .foregroundStyle(Color.accentColor, .white)
+        AppPanel {
+            VStack(alignment: .leading, spacing: 18) {
+                AppBadge(title: portal.title, systemImage: portal.icon, tint: AppTint.role(portal))
 
-            Text("HireLocal")
-                .font(.largeTitle.bold())
+                HStack(alignment: .top, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("HireLocal")
+                            .font(.system(size: 36, weight: .bold, design: .rounded))
 
-            Text(mode.title(for: portal))
-                .font(.title3.weight(.semibold))
+                        Text(mode.title(for: portal))
+                            .font(.title3.weight(.semibold))
 
-            Text(mode.subtitle(for: portal))
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+                        Text(mode.subtitle(for: portal))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 0)
+
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        AppTint.role(portal).opacity(0.22),
+                                        AppTheme.warmSand.opacity(0.18)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 88, height: 88)
+
+                        Image(systemName: portal.icon)
+                            .font(.system(size: 34, weight: .semibold))
+                            .foregroundStyle(AppTint.role(portal))
+                    }
+                }
+
+                HStack(spacing: 10) {
+                    AppBadge(title: "Local jobs", systemImage: "mappin.and.ellipse", tint: .accentColor)
+                    AppBadge(title: "Trusted ratings", systemImage: "star.fill", tint: AppTheme.warmSand)
+                    AppBadge(title: "Fast inbox", systemImage: "tray.full.fill", tint: .green)
+                }
+            }
         }
-        .padding(.top, 20)
     }
 
     private var portalSelector: some View {
-        HStack(spacing: 12) {
-            ForEach(UserRole.allCases) { role in
-                Button {
-                    portal = role
-                    feedbackMessage = ""
-                } label: {
-                    VStack(spacing: 6) {
-                        Image(systemName: role.icon)
-                            .font(.headline)
-                        Text(role.portalTitle)
-                            .font(.subheadline.weight(.semibold))
+        VStack(spacing: 14) {
+            AppSectionHeader(
+                eyebrow: "Portal",
+                title: "Choose your workspace",
+                subtitle: "Workers apply and build trust. Businesses post openings and manage applicants."
+            )
+
+            HStack(spacing: 12) {
+                ForEach(UserRole.allCases) { role in
+                    Button {
+                        portal = role
+                        feedbackMessage = ""
+                    } label: {
+                        VStack(alignment: .leading, spacing: 10) {
+                            AppBadge(title: role.title, systemImage: role.icon, tint: AppTint.role(role))
+
+                            Text(role.portalTitle)
+                                .font(.headline.weight(.semibold))
+
+                            Text(role.subtitle)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .lineLimit(3)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
+                        .background(portal == role ? AppTint.role(role).opacity(0.16) : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .strokeBorder(
+                                    portal == role ? AppTint.role(role).opacity(0.34) : Color.primary.opacity(0.06),
+                                    lineWidth: 1
+                                )
+                        }
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(portal == role ? Color.accentColor : Color(uiColor: .secondarySystemBackground))
-                    .foregroundStyle(portal == role ? .white : .primary)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .strokeBorder(
-                                portal == role ? Color.clear : Color.primary.opacity(colorScheme == .dark ? 0.16 : 0.08),
-                                lineWidth: 1
-                            )
-                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
         }
     }
@@ -133,60 +170,87 @@ struct AuthenticationView: View {
     }
 
     private var formCard: some View {
-        VStack(spacing: 14) {
-            if mode == .signUp {
-                TextField(portal.accountNameLabel, text: $fullName)
-                    .textInputAutocapitalization(.words)
-                    .autocorrectionDisabled()
-                    .textFieldStyle(.roundedBorder)
+        AppPanel {
+            VStack(alignment: .leading, spacing: 16) {
+                portalSelector
+
+                modeSelector
+
+                Divider()
+                    .opacity(0.45)
+
+                AppSectionHeader(
+                    eyebrow: mode == .login ? "Welcome Back" : "Create Account",
+                    title: manualActionTitle,
+                    subtitle: mode == .login
+                        ? "Use your saved email and password for this portal."
+                        : "Create your account with the details people in HireLocal will see."
+                )
+
+                if mode == .signUp {
+                    fieldBlock(title: portal.accountNameLabel) {
+                        TextField(portal.accountNameLabel, text: $fullName)
+                            .textInputAutocapitalization(.words)
+                            .autocorrectionDisabled()
+                            .appFieldStyle()
+                    }
+                }
+
+                fieldBlock(title: "Email") {
+                    TextField("you@example.com", text: $email)
+                        .keyboardType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .appFieldStyle()
+                }
+
+                fieldBlock(title: "Password") {
+                    SecureField("At least 6 characters", text: $password)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .appFieldStyle()
+                }
+
+                Button(manualActionTitle) {
+                    submitManualAuth()
+                }
+                .buttonStyle(AppPrimaryButtonStyle())
             }
-
-            TextField("Email", text: $email)
-                .keyboardType(.emailAddress)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .textFieldStyle(.roundedBorder)
-
-            SecureField("Password", text: $password)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .textFieldStyle(.roundedBorder)
-
-            Button(manualActionTitle) {
-                submitManualAuth()
-            }
-            .buttonStyle(.borderedProminent)
-            .frame(maxWidth: .infinity)
-            .padding(.top, 4)
-        }
-        .padding(18)
-        .background(Color(uiColor: .secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(Color.primary.opacity(colorScheme == .dark ? 0.08 : 0.04), lineWidth: 1)
         }
     }
 
     private var appleButton: some View {
-        VStack(spacing: 10) {
-            Text("or")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+        AppPanel {
+            VStack(alignment: .leading, spacing: 14) {
+                AppSectionHeader(
+                    eyebrow: "Apple Sign In",
+                    title: "Use your Apple account",
+                    subtitle: "Best when you want faster access or prefer not to manage a password here."
+                )
 
-            SignInWithAppleButton(.continue) { request in
-                request.requestedScopes = [.fullName, .email]
-            } onCompletion: { result in
-                handleAppleResult(result)
+                SignInWithAppleButton(.continue) { request in
+                    request.requestedScopes = [.fullName, .email]
+                } onCompletion: { result in
+                    handleAppleResult(result)
+                }
+                .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+                .frame(maxWidth: .infinity)
+                .frame(height: 54)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                Text("Continue with Apple for the \(portal.title.lowercased()) portal.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            .signInWithAppleButtonStyle(.black)
-            .frame(maxWidth: 375)
-            .frame(height: 52)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+    }
 
-            Text("Continue with Apple for the \(portal.title.lowercased()) portal")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+    private var feedbackPanel: some View {
+        AppPanel {
+            Text(feedbackMessage)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.red)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -206,6 +270,10 @@ struct AuthenticationView: View {
                 try store.login(email: email, password: password, role: portal)
             case .signUp:
                 try store.signUp(fullName: fullName, email: email, password: password, role: portal)
+            }
+            if let currentUser = store.currentUser,
+               !currentUser.postingProfileIsComplete || currentUser.marketplaceEmail == nil {
+                store.selectedTab = .account
             }
             feedbackMessage = ""
             clearFields()
@@ -229,8 +297,7 @@ struct AuthenticationView: View {
                     role: portal
                 )
                 if let currentUser = store.currentUser,
-                   (currentUser.role == .business && !currentUser.businessProfileIsComplete)
-                    || currentUser.marketplaceEmail == nil {
+                   !currentUser.postingProfileIsComplete || currentUser.marketplaceEmail == nil {
                     store.selectedTab = .account
                 }
                 feedbackMessage = ""
@@ -247,6 +314,19 @@ struct AuthenticationView: View {
         fullName = ""
         email = ""
         password = ""
+    }
+
+    private func fieldBlock<Content: View>(
+        title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            content()
+        }
     }
 
     private func appleSignInMessage(for error: Error) -> String {
