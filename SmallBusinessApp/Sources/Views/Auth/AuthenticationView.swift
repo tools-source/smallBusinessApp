@@ -1,5 +1,7 @@
 import AuthenticationServices
+import GoogleSignIn
 import SwiftUI
+import UIKit
 
 private enum AuthMode: String, CaseIterable, Identifiable {
     case login = "Log In"
@@ -49,6 +51,7 @@ struct AuthenticationView: View {
                     hero
                     formCard
                     appleButton
+                    googleButton
                     if !feedbackMessage.isEmpty {
                         feedbackPanel
                     }
@@ -245,6 +248,67 @@ struct AuthenticationView: View {
         }
     }
 
+    private var googleButton: some View {
+        AppPanel {
+            VStack(alignment: .leading, spacing: 14) {
+                AppSectionHeader(
+                    eyebrow: "Google Sign In",
+                    title: "Use your Google account",
+                    subtitle: "Fast sign in with your Google profile while keeping your HireLocal data in this app."
+                )
+
+                Button {
+                    startGoogleSignIn()
+                } label: {
+                    HStack(spacing: 14) {
+                        googleMark
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Continue with Google")
+                                .font(.headline.weight(.semibold))
+                                .foregroundStyle(.primary)
+
+                            Text("For the \(portal.title.lowercased()) portal")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "arrow.right.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(Color(red: 0.26, green: 0.52, blue: 0.96))
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                    .background(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.9))
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .strokeBorder(Color.primary.opacity(colorScheme == .dark ? 0.10 : 0.06), lineWidth: 1)
+                    }
+                }
+                .buttonStyle(.plain)
+
+                Text("Google Sign-In needs your iOS Google client ID configured in the app first.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var googleMark: some View {
+        ZStack {
+            Circle()
+                .fill(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.94))
+                .frame(width: 34, height: 34)
+
+            Text("G")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(Color(red: 0.26, green: 0.52, blue: 0.96))
+        }
+    }
+
     private var feedbackPanel: some View {
         AppPanel {
             Text(feedbackMessage)
@@ -310,6 +374,54 @@ struct AuthenticationView: View {
         }
     }
 
+    private func startGoogleSignIn() {
+        UIApplication.shared.dismissAppKeyboard()
+
+        guard GoogleBundleConfiguration.isConfigured else {
+            feedbackMessage = "Google Sign-In isn't configured yet. Add your Google iOS client ID and reversed client ID in project settings."
+            return
+        }
+
+        guard let presentingViewController = UIApplication.shared.appActiveRootViewController else {
+            feedbackMessage = "Could not open Google Sign-In right now."
+            return
+        }
+
+        GIDSignIn.sharedInstance.signIn(withPresenting: presentingViewController) { signInResult, error in
+            if let error {
+                feedbackMessage = error.localizedDescription
+                return
+            }
+
+            guard let user = signInResult?.user else {
+                feedbackMessage = "Google Sign-In didn't return an account."
+                return
+            }
+
+            guard let userID = user.userID, !userID.isEmpty else {
+                feedbackMessage = "Google Sign-In didn't return a valid account ID."
+                return
+            }
+
+            do {
+                try store.signInWithGoogle(
+                    userID: userID,
+                    fullName: user.profile?.name,
+                    email: user.profile?.email,
+                    role: portal
+                )
+                if let currentUser = store.currentUser,
+                   !currentUser.postingProfileIsComplete || currentUser.marketplaceEmail == nil {
+                    store.selectedTab = .account
+                }
+                feedbackMessage = ""
+                clearFields()
+            } catch {
+                feedbackMessage = error.localizedDescription
+            }
+        }
+    }
+
     private func clearFields() {
         fullName = ""
         email = ""
@@ -356,5 +468,45 @@ struct AuthenticationView: View {
         @unknown default:
             return "Apple Sign In could not be completed. Check the app's signing and capability setup in Xcode and try again."
         }
+    }
+}
+
+private enum GoogleBundleConfiguration {
+    private static let placeholderFragments = [
+        "placeholder.apps.googleusercontent.com",
+        "com.googleusercontent.apps.1234567890-placeholder"
+    ]
+
+    static var isConfigured: Bool {
+        guard let clientID = stringValue(for: "GIDClientID"),
+              !clientID.isEmpty,
+              !placeholderFragments.contains(where: clientID.contains),
+              let callbackScheme = callbackScheme,
+              !callbackScheme.isEmpty,
+              !placeholderFragments.contains(where: callbackScheme.contains) else {
+            return false
+        }
+        return true
+    }
+
+    private static func stringValue(for key: String) -> String? {
+        (Bundle.main.object(forInfoDictionaryKey: key) as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static var callbackScheme: String? {
+        let urlTypes = Bundle.main.object(forInfoDictionaryKey: "CFBundleURLTypes") as? [[String: Any]]
+        let schemes = urlTypes?.first?["CFBundleURLSchemes"] as? [String]
+        return schemes?.first?.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+private extension UIApplication {
+    var appActiveRootViewController: UIViewController? {
+        connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first(where: \.isKeyWindow)?
+            .rootViewController
     }
 }

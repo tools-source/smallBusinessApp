@@ -1,6 +1,7 @@
 import AuthenticationServices
 import CryptoKit
 import Foundation
+import GoogleSignIn
 import UIKit
 
 struct RatingSummary {
@@ -219,8 +220,13 @@ final class AppStore: ObservableObject {
             throw AppError.portalMismatch(expected: user.role)
         }
 
-        guard user.authProvider == .manual else {
+        switch user.authProvider {
+        case .manual:
+            break
+        case .apple:
             throw AppError.useAppleSignIn
+        case .google:
+            throw AppError.useGoogleSignIn
         }
 
         guard user.passwordHash == Self.hash(cleanPassword) else {
@@ -287,7 +293,70 @@ final class AppStore: ObservableObject {
         setCurrentUser(newUser)
     }
 
+    func signInWithGoogle(
+        userID: String,
+        fullName: String?,
+        email: String?,
+        role: UserRole
+    ) throws {
+        let appUserID = "google:\(userID)"
+
+        if var existingUser = users.first(where: { $0.id == appUserID }) {
+            guard existingUser.role == role else {
+                throw AppError.portalMismatch(expected: existingUser.role)
+            }
+
+            let normalizedName = fullName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if !normalizedName.isEmpty, existingUser.role == .worker {
+                existingUser.fullName = normalizedName
+            }
+            if let actualEmail = Self.normalizedEmailValue(email), !actualEmail.isEmpty {
+                existingUser.email = actualEmail
+                existingUser.publicEmail = actualEmail
+            }
+
+            if let index = users.firstIndex(where: { $0.id == existingUser.id }) {
+                users[index] = existingUser
+                persistUsers()
+                setCurrentUser(existingUser)
+                return
+            }
+        }
+
+        let actualEmail = Self.normalizedEmailValue(email)
+        if let actualEmail,
+           users.contains(where: { ($0.email == actualEmail || $0.publicEmail == actualEmail) && $0.id != appUserID }) {
+            throw AppError.accountExists
+        }
+
+        let resolvedName = {
+            let normalizedName = fullName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if !normalizedName.isEmpty {
+                return normalizedName
+            }
+            return role == .business ? "New Business" : "Google User"
+        }()
+
+        let newUser = AppUser(
+            id: appUserID,
+            fullName: resolvedName,
+            email: actualEmail ?? "",
+            publicEmail: actualEmail,
+            passwordHash: nil,
+            businessName: role == .business ? resolvedName : nil,
+            role: role,
+            authProvider: .google,
+            createdAt: Date()
+        )
+        users.append(newUser)
+        persistUsers()
+        setCurrentUser(newUser)
+    }
+
     func logout() {
+        if currentUser?.authProvider == .google {
+            GIDSignIn.sharedInstance.signOut()
+        }
         currentUser = nil
         storage.remove(fileName: sessionFile)
     }
@@ -794,6 +863,7 @@ enum AppError: LocalizedError {
     case accountNotFound
     case invalidCredentials
     case useAppleSignIn
+    case useGoogleSignIn
     case notAuthenticated
     case portalMismatch(expected: UserRole)
     case invalidPostTypeForRole(UserRole)
@@ -836,6 +906,8 @@ enum AppError: LocalizedError {
             return "Incorrect email or password."
         case .useAppleSignIn:
             return "This account uses Apple Sign In. Use the Apple button below."
+        case .useGoogleSignIn:
+            return "This account uses Google Sign-In. Use the Google button below."
         case .notAuthenticated:
             return "Please sign in first."
         case .portalMismatch(let expected):

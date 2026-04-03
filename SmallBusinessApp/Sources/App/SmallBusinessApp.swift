@@ -1,3 +1,4 @@
+import GoogleSignIn
 import SwiftUI
 
 @main
@@ -10,6 +11,9 @@ struct SmallBusinessApp: App {
             RootView()
                 .environmentObject(store)
                 .environmentObject(locationManager)
+                .onOpenURL { url in
+                    GIDSignIn.sharedInstance.handle(url)
+                }
         }
     }
 }

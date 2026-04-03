@@ -3,11 +3,13 @@ import Foundation
 enum AuthProvider: String, Codable, CaseIterable {
     case manual
     case apple
+    case google
 
     var displayName: String {
         switch self {
         case .manual: return "Email"
         case .apple: return "Apple"
+        case .google: return "Google"
         }
     }
 }

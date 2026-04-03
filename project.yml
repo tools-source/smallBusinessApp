@@ -2,6 +2,10 @@ name: SmallBusinessApp
 options:
   bundleIdPrefix: com.majdinagi
   createIntermediateGroups: true
+packages:
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS
+    from: 9.0.0
 configs:
   Debug: debug
   Release: release
@@ -25,19 +29,18 @@ targets:
           - Default
     settings:
       base:
-        GENERATE_INFOPLIST_FILE: YES
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: SmallBusinessApp/Info.plist
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: HQDDMSV8AR
         PRODUCT_BUNDLE_IDENTIFIER: com.majdinagi.SmallBusinessApp
-        INFOPLIST_KEY_CFBundleDisplayName: HireLocal
-        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: true
-        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: true
-        INFOPLIST_KEY_UILaunchScreen_Generation: true
-        INFOPLIST_KEY_UIStatusBarStyle: UIStatusBarStyleDefault
-        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.business
-        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: HireLocal uses your location to show nearby jobs and workers and to help fill posting addresses.
+        GOOGLE_CLIENT_ID: 1234567890-placeholder.apps.googleusercontent.com
+        GOOGLE_REVERSED_CLIENT_ID: com.googleusercontent.apps.1234567890-placeholder
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         TARGETED_DEVICE_FAMILY: 1,2
+    dependencies:
+      - package: GoogleSignIn
+        product: GoogleSignIn
     scheme:
       testTargets: []
